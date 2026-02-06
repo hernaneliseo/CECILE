@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cécile Pastelería | Menú Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'cecile-cream': '#F9F6F1',
+                        'cecile-gold': '#B89655',
+                        'cecile-navy': '#0F1A2A',
+                        'cecile-text': '#2D2926',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F9F6F1; -webkit-tap-highlight-color: transparent; }
+        h1, h2, h3, .font-serif { font-family: 'Playfair Display', serif; }
+        
+        /* Estilo de los círculos de producto estilo Cécile */
+        .product-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #B89655;
+            padding: 3px;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        /* Pestañas de categorías superiores estables */
+        .category-tab {
+            position: relative;
+            padding-bottom: 12px;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .category-tab.active {
+            color: #0F1A2A;
+            font-weight: 700;
+            border-bottom-color: #B89655;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Área de contenido con espacio suficiente para las barras inferiores fijas */
+        .main-content {
+            padding-bottom: 160px; /* Espacio para Shop Bar (64px) + Nav Bar (72px) + margen */
+        }
+
+        /* Estabilidad de las barras inferiores */
+        .fixed-bottom-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="text-cecile-text min-h-screen bg-cecile-cream">
+
+    <!-- Header Superior Fijo -->
+    <nav class="bg-white sticky top-0 z-[60] px-6 py-4 flex justify-between items-center border-b border-gray-100">
+        <div class="flex items-center space-x-2">
+            <i class="fas fa-chevron-left text-cecile-navy text-lg"></i>
+        </div>
+        <h1 class="text-xl font-bold text-cecile-navy">Order</h1>
+        <i class="fas fa-search text-cecile-navy text-lg"></i>
+    </nav>
+
+    <!-- Selector de Categorías Fijo -->
+    <div class="bg-white sticky top-[61px] z-[55] px-6 pt-4 flex space-x-8 border-b border-gray-100 overflow-x-auto no-scrollbar">
+        <button onclick="filterCategory('Menu')" class="category-tab active text-sm text-cecile-navy whitespace-nowrap">Menu</button>
+        <button class="category-tab text-sm text-gray-400 whitespace-nowrap">Featured</button>
+        <button class="category-tab text-sm text-gray-400 whitespace-nowrap">Previous</button>
+        <button class="category-tab text-sm text-gray-400 whitespace-nowrap">Favorites</button>
+    </div>
+
+    <!-- CONTENIDO DESPLAZABLE -->
+    <div class="main-content">
+        <!-- VISTA: HOME / ORDENAR -->
+        <main id="view-home" class="view-section active max-w-md mx-auto px-6 pt-6 space-y-10">
+            
+            <!-- Sección Drinks -->
+            <section id="drinks-section">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-cecile-navy">Drinks</h2>
+                    <span class="text-cecile-gold text-xs font-bold tracking-tighter">See all 164</span>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4 cursor-pointer" onclick="openCategory('Hot Coffee')">
+                        <img src="https://images.unsplash.com/photo-1541167760496-162955ed8a9f?q=80&w=200" class="product-circle shadow-sm">
+                        <span class="text-lg font-semibold text-cecile-navy flex-1">Hot Coffees</span>
+                    </div>
+
+                    <div class="flex items-center space-x-4 cursor-pointer">
+                        <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?q=80&w=200" class="product-circle shadow-sm">
+                        <span class="text-lg font-semibold text-cecile-navy flex-1">Cold Coffees</span>
+                    </div>
+
+                    <div class="flex items-center space-x-4 cursor-pointer">
+                        <img src="https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=200" class="product-circle shadow-sm">
+                        <span class="text-lg font-semibold text-cecile-navy flex-1">Frappuccino® Blended</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección Food -->
+            <section id="food-section">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-cecile-navy">Food</h2>
+                    <span class="text-cecile-gold text-xs font-bold tracking-tighter">See all 71</span>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <img src="https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?q=80&w=200" class="product-circle shadow-sm">
+                        <span class="text-lg font-semibold text-cecile-navy flex-1">Bakery</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <img src="https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=200" class="product-circle shadow-sm">
+                        <span class="text-lg font-semibold text-cecile-navy flex-1">Lunch</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección At Home Coffee -->
+            <section class="pb-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-cecile-navy tracking-tight">At Home Coffee</h2>
+                    <span class="text-cecile-gold text-xs font-bold tracking-tighter">See all 27</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?q=80&w=200" class="product-circle shadow-sm">
+                    <span class="text-lg font-semibold text-cecile-navy flex-1">Whole Bean</span>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menú - Cécile Pastelería</title>
+
+<style>
+    :root {
+        --azul: rgb(18, 60, 101);
+        --azul-suave: rgba(18, 60, 101, 0.15);
+        --gris: #333;
+        --blanco: #fff;
+    }
+
+    body {
+        margin: 0;
+        font-family: 'Poppins', sans-serif;
+        background: var(--blanco);
+        color: var(--gris);
+    }
+
+    /* HEADER */
+    header {
+        background: var(--azul);
+        padding: 18px;
+        text-align: center;
+        color: var(--blanco);
+        font-size: 1.6rem;
+        font-weight: 600;
+    }
+
+    /* TITULOS DE CATEGORIA */
+    .categoria {
+        padding: 20px;
+    }
+
+    .categoria h2 {
+        font-size: 1.4rem;
+        color: var(--azul);
+        margin: 0 0 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .ver-todo {
+        font-size: 0.9rem;
+        color: var(--azul);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    /* GRID DE PRODUCTOS */
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+    }
+
+    .item {
+        text-align: center;
+    }
+
+    .item img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 12px;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+
+    .item p {
+        margin-top: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* SEPARADOR */
+    .linea {
+        height: 1px;
+        background: var(--azul-suave);
+        margin: 10px 0 20px 0;
+    }
+</style>
+</head>
+
+<body>
+
+<header>Menú</header>
+
+<!-- PASTELES -->
+<section class="categoria">
+    <h2>Pasteles <a class="ver-todo" href="#">Ver todos</a></h2>
+    <div class="grid">
+        <div class="item">
+            <img src="img/pastel1.jpg">
+            <p>Pastel de Vainilla</p>
+        </div>
+        <div class="item">
+            <img src="img/pastel2.jpg">
+            <p>Pastel de Chocolate</p>
+        </div>
+        <div class="item">
+            <img src="img/pastel3.jpg">
+            <p>Pastel Temático</p>
+        </div>
+        <div class="item">
+            <img src="img/pastel4.jpg">
+            <p>Pastel Premium</p>
+        </div>
+    </div>
+</section>
+
+<div class="linea"></div>
+
+<!-- CUPCAKES -->
+<section class="categoria">
+    <h2>Cupcakes <a class="ver-todo" href="#">Ver todos</a></h2>
+    <div class="grid">
+        <div class="item">
+            <img src="img/cupcake1.jpg">
+            <p>Vainilla</p>
+        </div>
+        <div class="item">
+            <img src="img/cupcake2.jpg">
+            <p>Chocolate</p>
+        </div>
+        <div class="item">
+            <img src="img/cupcake3.jpg">
+            <p>Red Velvet</p>
+        </div>
+        <div class="item">
+            <img src="img/cupcake4.jpg">
+            <p>Decorado</p>
+        </div>
+    </div>
+</section>
+
+<div class="linea"></div>
+
+<!-- GALLETAS -->
+<section class="categoria">
+    <h2>Galletas Decoradas <a class="ver-todo" href="#">Ver todas</a></h2>
+    <div class="grid">
+        <div class="item">
+            <img src="img/galleta1.jpg">
+            <p>Cumpleaños</p>
+        </div>
+        <div class="item">
+            <img src="img/galleta2.jpg">
+            <p>Baby Shower</p>
+        </div>
+        <div class="item">
+            <img src="img/galleta3.jpg">
+            <p>Personajes</p>
+        </div>
+        <div class="item">
+            <img src="img/galleta4.jpg">
+            <p>Personalizadas</p>
+        </div>
+    </div>
+</section>
+
+<div class="linea"></div>
+
+<!-- POSTRES -->
+<section class="categoria">
+    <h2>Postres Individuales <a class="ver-todo" href="#">Ver todos</a></h2>
+    <div class="grid">
+        <div class="item">
+            <img src="img/postre1.jpg">
+            <p>Cheesecake</p>
+        </div>
+        <div class="item">
+            <img src="img/postre2.jpg">
+            <p>Mousse</p>
+        </div>
+        <div class="item">
+            <img src="img/postre3.jpg">
+            <p>Brownies</p>
+        </div>
+        <div class="item">
+            <img src="img/postre4.jpg">
+            <p>Tartaletas</p>
+        </div>
+    </div>
+</section>
+
+</body>
+</html>

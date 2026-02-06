@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Documento sin título</title>
+</head>
+<script>
+	/* HEADER */
+.cecile-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #ffffff;
+    border-bottom: 2px solid rgba(217, 164, 65, 0.25);
+}
+
+/* CONTENEDOR */
+.cecile-header-container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* LOGO */
+.cecile-logo-img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #D9A441;
+    cursor: pointer;
+}
+
+/* NAV DESKTOP */
+.cecile-nav {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .cecile-nav {
+        display: flex;
+        gap: 26px;
+    }
+
+    .cecile-nav button {
+        background: none;
+        border: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: rgb(18, 60, 101);
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .cecile-nav button:hover {
+        color: #D9A441;
+    }
+}
+
+/* MENÚ MÓVIL */
+.cecile-mobile-menu-btn {
+    background: none;
+    border: none;
+    color: rgb(18, 60, 101);
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+@media (min-width: 768px) {
+    .cecile-mobile-menu-btn {
+        display: none;
+    }
+}
+</script>
+<body>
+	<header class="cecile-header">
+    <div class="cecile-header-container">
+
+        <!-- Logo -->
+        <div class="cecile-logo" onclick="setView('home')">
+            <img src="img/logo.jpg" alt="Logo Cécile" class="cecile-logo-img">
+        </div>
+
+        <!-- Navegación Minimalista -->
+        <nav class="cecile-nav">
+            <button onclick="setView('home')">Inicio</button>
+            <button onclick="setView('menu')">Menú</button>
+            <button onclick="setView('account')">Cuenta</button>
+            <button onclick="toggleCart()">Carrito</button>
+        </nav>
+
+        <!-- Menú móvil -->
+        <button class="cecile-mobile-menu-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+    </div>
+</header>
+
+</body>
+</html>

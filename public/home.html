@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cécile Pastelería | Menú y Pedidos</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Fuentes Elegantes -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'cecile-cream': '#FDFBF7',
+                        'cecile-gold': '#C5A059',
+                        'cecile-navy': '#1A2E44',
+                        'cecile-text': '#3E362E',
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .product-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .cart-modal-open { overflow: hidden; }
+		/* HEADER BASE */
+.cecile-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #ffffff;
+    border-bottom: 2px solid rgba(217, 164, 65, 0.25); /* dorado suave */
+}
+
+/* CONTENEDOR */
+.cecile-header-container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 14px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* LOGO */
+.cecile-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.cecile-logo-icon {
+    width: 42px;
+    height: 42px;
+    background: rgb(18, 60, 101);
+    color: #D9A441;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: serif;
+    font-size: 1.4rem;
+    font-weight: bold;
+}
+
+.cecile-logo-text h1 {
+    font-family: serif;
+    font-size: 1.3rem;
+    color: rgb(18, 60, 101);
+    margin: 0;
+    line-height: 1;
+}
+
+.cecile-logo-text span {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #D9A441;
+    font-weight: bold;
+}
+
+/* NAV DESKTOP */
+.cecile-nav {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .cecile-nav {
+        display: flex;
+        gap: 28px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: rgb(18, 60, 101);
+    }
+
+    .cecile-nav button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .cecile-nav button:hover {
+        color: #D9A441;
+    }
+}
+
+/* ACCIONES */
+.cecile-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* CARRITO */
+.cecile-cart-btn {
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgb(18, 60, 101);
+    font-size: 1.3rem;
+}
+
+.cecile-cart-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #D9A441;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 50%;
+}
+
+/* BOTÓN MENÚ MÓVIL */
+.cecile-mobile-menu-btn {
+    background: none;
+    border: none;
+    color: rgb(18, 60, 101);
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+@media (min-width: 768px) {
+    .cecile-mobile-menu-btn {
+        display: none;
+    }
+}
+.cecile-logo-img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #D9A441; /* borde dorado elegante */
+}
+	/* HEADER */
+.cecile-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #ffffff;
+    border-bottom: 2px solid rgba(217, 164, 65, 0.25);
+}
+
+/* CONTENEDOR */
+.cecile-header-container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* LOGO */
+.cecile-logo-img {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #D9A441;
+    cursor: pointer;
+}
+
+/* NAV DESKTOP */
+.cecile-nav {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .cecile-nav {
+        display: flex;
+        gap: 26px;
+    }
+
+    .cecile-nav button {
+        background: none;
+        border: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: rgb(18, 60, 101);
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .cecile-nav button:hover {
+        color: #D9A441;
+    }
+}
+
+/* MENÚ MÓVIL */
+.cecile-mobile-menu-btn {
+    background: none;
+    border: none;
+    color: rgb(18, 60, 101);
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+@media (min-width: 768px) {
+    .cecile-mobile-menu-btn {
+        display: none;
+    }
+}
+    </style>
+</head>
+<body class="bg-cecile-cream font-sans text-cecile-text min-h-screen">
+
+    <!-- Navegación Adaptable -->
+ <header class="cecile-header">
+    <div class="cecile-header-container">
+
+        <!-- Logo -->
+        <div class="cecile-logo" onclick="setView('home')">
+            <img src="../img/logo.jpg" alt="Logo Cécile" class="cecile-logo-img">
+        </div>
+
+        <!-- Navegación Minimalista -->
+        <nav class="cecile-nav">
+            <button onclick="setView('home')">Inicio</button>
+            <button onclick="setView('menu')">Menú</button>
+            <button onclick="setView('account')">Cuenta</button>
+            <button onclick="toggleCart()">Carrito</button>
+        </nav>
+
+        <!-- Menú móvil -->
+        <button class="cecile-mobile-menu-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+    </div>
+</header>
+
+
+
+    <!-- Menú Móvil (Solo Mobile) -->
+    <div id="mobile-menu" class="fixed inset-0 bg-cecile-navy z-[60] hidden flex flex-col items-center justify-center space-y-8 text-white text-2xl font-serif">
+        <button onclick="toggleMobileMenu()" class="absolute top-6 right-6 text-white text-3xl">&times;</button>
+        <button onclick="setView('home'); toggleMobileMenu()">Inicio</button>
+        <button onclick="setView('menu'); toggleMobileMenu()">Ver Menú</button>
+        <button onclick="setView('account'); toggleMobileMenu()">Mis Datos</button>
+    </div>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-6xl mx-auto">
+        
+        <!-- VISTA HOME -->
+        <section id="home-view" class="px-6 py-12 md:py-20 flex flex-col md:flex-row items-center gap-12">
+            <div class="flex-1 space-y-6 text-center md:text-left">
+                <h2 class="font-serif text-5xl md:text-7xl text-cecile-navy leading-tight">Momentos <br><span class="text-cecile-gold italic text-4xl md:text-6xl">artesanales</span></h2>
+                <p class="text-gray-500 max-w-md mx-auto md:mx-0 font-light leading-relaxed">Desde nuestras icónicas milhojas hasta macarons franceses, cada bocado es una obra de arte creada en El Salvador.</p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                    <button onclick="setView('menu')" class="bg-cecile-navy text-white px-8 py-4 rounded-full font-bold hover:shadow-xl transition">Explorar Menú</button>
+                    <button onclick="window.open('https://www.google.com/maps?q=Cécile+Pastelería', '_blank')" class="border border-cecile-gold text-cecile-gold px-8 py-4 rounded-full font-bold hover:bg-cecile-gold hover:text-white transition">Cómo llegar</button>
+                </div>
+            </div>
+            <div class="flex-1 w-full max-w-md md:max-w-none">
+                <div class="relative">
+                    <div class="absolute -inset-4 bg-cecile-gold/10 rounded-full blur-3xl"></div>
+                    <img src="https://images.unsplash.com/photo-1558301211-0d8c8ddee6ec?auto=format&fit=crop&q=80&w=800" class="relative rounded-2xl shadow-2xl object-cover aspect-square w-full" alt="Milhojas Cécile">
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA MENÚ -->
+        <section id="menu-view" class="hidden px-6 py-12">
+            <div class="text-center md:text-left mb-12">
+                <h3 class="font-serif text-4xl text-cecile-navy">Nuestra Selección</h3>
+                <p class="text-cecile-gold font-semibold uppercase tracking-widest text-xs mt-2">Artesanía en cada detalle</p>
+            </div>
+            
+            <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <!-- Los productos se cargan desde Firestore o Mock -->
+            </div>
+        </section>
+    </main>
+
+    <!-- BARRAS INFERIORES -->
+    <div class="fixed-bottom-bar z-50">
+        <!-- Barra de Estado / Tienda -->
+       
+
+        <!-- Navegación -->
+        <div class="bg-white border-t border-gray-100 px-6 flex justify-between items-center h-[76px]">
+            <button onclick="switchView('home')" class="nav-item flex flex-col items-center flex-1 text-gray-300 transition-colors">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-[9px] uppercase mt-1.5 font-bold tracking-widest">Inicio</span>
+            </button>
+            <button class="nav-item flex flex-col items-center flex-1 text-gray-300 transition-colors">
+                <i class="fas fa-qrcode text-xl"></i>
+                <span class="text-[9px] uppercase mt-1.5 font-bold tracking-widest">Escanear</span>
+            </button>
+            <button onclick="switchView('home')" id="nav-order" class="nav-item flex flex-col items-center flex-1 text-cecile-green transition-colors">
+                <i class="fas fa-coffee text-xl"></i>
+                <span class="text-[9px] uppercase mt-1.5 font-bold tracking-widest">Carta</span>
+            </button>
+            <button class="nav-item flex flex-col items-center flex-1 text-gray-300 transition-colors">
+                <i class="fas fa-concierge-bell text-xl"></i>
+                <span class="text-[9px] uppercase mt-1.5 font-bold tracking-widest">Servicio</span>
+            </button>
+            <button onclick="switchView('profile')" id="nav-profile" class="nav-item flex flex-col items-center flex-1 text-gray-300 transition-colors">
+                <i class="fas fa-user-circle text-xl"></i>
+                <span class="text-[9px] uppercase mt-1.5 font-bold tracking-widest">Cuenta</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        window.switchView = (viewId) => {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('text-cecile-green');
+                item.classList.add('text-gray-300');
+            });
+
+            if(viewId === 'home') {
+                document.getElementById('nav-order').classList.replace('text-gray-300', 'text-cecile-green');
+            } else if(viewId === 'profile') {
+                document.getElementById('nav-profile').classList.replace('text-gray-300', 'text-cecile-green');
+            }
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.filterCategory = (cat) => {
+            console.log("Categoría activa:", cat);
+        };
+
+        window.openCategory = (catName) => {
+            console.log("Explorando:", catName);
+        };
+    </script>
+    <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js");
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cécile App - Pedidos y Recompensas</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuración de la App
+        setLogLevel('Debug');
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cecile-pasteleria-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let userId = 'loading'; // Default loading state
+        let isAuthReady = false;
+
+        // Variables globales para la aplicación
+        window.appState = {
+            view: 'home', // CAMBIO: 'home' es la nueva vista principal
+            subView: null, // Sub-vista dentro de 'account' ('personalInfo', 'transactions', etc.)
+            cart: [],
+            // Estado inicial del usuario con sistema de tiers
+            userProfile: {
+                name: 'Cliente Cécile',
+                email: 'cliente.cecile@email.com',
+                phone: '+34 600 123 456',
+                birthdate: '1985-10-25',
+                points: 31, // Puntos de ejemplo para la tarjeta
+                rewardTier: 'Bronze', // 'Bronze', 'Silver', 'Gold'
+                totalPointsRequired: 200, // Puntos necesarios para el siguiente tier (Silver)
+                purchaseCount: 0,
+                nextRewardAt: 5 // Artículo gratis cada 5 compras
+            },
+            // Datos de transacciones simuladas
+            transactions: [
+                { id: 104, date: '2025-11-28', amount: 12.50, items: 3, location: 'Tienda Madrid Centro' },
+                { id: 103, date: '2025-11-25', amount: 8.90, items: 2, location: 'Pedido Online' },
+                { id: 102, date: '2025-11-18', amount: 25.10, items: 4, location: 'Tienda Barcelona Eixample' },
+                { id: 101, date: '2025-11-10', amount: 4.50, items: 1, location: 'Tienda Madrid Centro' },
+                { id: 100, date: '2025-11-03', amount: 15.00, items: 3, location: 'Pedido Online' },
+            ],
+            
+            // --- MENÚ ACTUALIZADO CON MÁS PRODUCTOS ---
+            menuCategories: {
+                pasteleria: [
+                    { id: 1, name: 'Tarta de Frambuesa', price: 6.50, description: 'Fina tarta con crema pastelera y frambuesas frescas.', imageUrl: 'https://placehold.co/100x100/d6a0a0/ffffff?text=TartaFr' },
+                    { id: 2, name: 'Croissant de Almendras', price: 3.80, description: 'Crujiente croissant relleno de crema de almendras.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=CroissA' },
+                    { id: 3, name: 'Pain au Chocolat', price: 3.90, description: 'Hojaldre con dos barras de chocolate negro.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=PainChoc' },
+                    { id: 5, name: 'Macarons (6u)', price: 12.00, description: 'Surtido de sabores de temporada.', imageUrl: 'https://placehold.co/100x100/3a3a3a/d6a0a0?text=Macarons' },
+                    { id: 6, name: 'Tarta de Queso Vasco', price: 6.80, description: 'Cremosa y quemada, receta tradicional.', imageUrl: 'https://placehold.co/100x100/f5f5e6/d6a0a0?text=QuesoV' },
+                    { id: 7, name: 'Éclair de Vainilla', price: 5.50, description: 'Masa choux rellena de crema de vainilla de Madagascar.', imageUrl: 'https://placehold.co/100x100/d6a0a0/ffffff?text=Eclair' },
+                    { id: 8, name: 'Tarta de Limón y Merengue', price: 6.00, description: 'Base crujiente, crema ácida y merengue tostado.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=Limon' },
+                ],
+                // ESTRUCTURA DETALLADA PARA BEBIDAS
+                bebidas: {
+                    cafe_caliente: [
+                        { id: 10, name: 'Café Filtrado', price: 2.50, description: 'Selección del día, tostado medio.', imageUrl: 'https://placehold.co/100x100/3a3a3a/f5f5e6?text=Filtro' },
+                        { id: 11, name: 'Caffè Americano', price: 3.00, description: 'Shots de espresso diluidos en agua caliente.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=Americ' },
+                        { id: 12, name: 'Caffè Latte', price: 4.50, description: 'Espresso con leche al vapor y capa fina de espuma.', imageUrl: 'https://placehold.co/100x100/f5f5e6/3a3a3a?text=Latte' },
+                        { id: 13, name: 'Cappuccino', price: 4.50, description: 'Espresso con leche al vapor y capa gruesa de espuma.', imageUrl: 'https://placehold.co/100x100/d6a0a0/f5f5e6?text=Cappu' },
+                        { id: 14, name: 'Caffè Mocha', price: 5.00, description: 'Espresso, leche al vapor y salsa de chocolate.', imageUrl: 'https://placehold.co/100x100/3a3a3a/d6a0a0?text=Mocha' },
+                        { id: 15, name: 'Caramel Macchiato', price: 5.20, description: 'Leche al vapor, espresso, vainilla y sirope de caramelo.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=Macc' },
+                        { id: 16, name: 'Flat White', price: 4.80, description: 'Doble shot de ristretto con leche cremosa.', imageUrl: 'https://placehold.co/100x100/f5f5e6/3a3a3a?text=Flat' },
+                        { id: 17, name: 'Cortado', price: 3.50, description: 'Doble shot de espresso con un toque de leche al vapor.', imageUrl: 'https://placehold.co/100x100/d6a0a0/f5f5e6?text=Cortado' },
+                        { id: 18, name: 'Espresso Doble', price: 2.50, description: 'Doble shot de nuestro blend especial.', imageUrl: 'https://placehold.co/100x100/3a3a3a/f5f5e6?text=Espresso' },
+                        { id: 19, name: 'Té Chai Latte', price: 5.50, description: 'Té negro especiado con leche al vapor y espuma.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=Chai' },
+                        { id: 25, name: 'Chocolate Caliente', price: 4.90, description: 'Chocolate belga fundido con leche, rico y espeso.', imageUrl: 'https://placehold.co/100x100/7a4a4a/ffffff?text=Choc' },
+                    ],
+                    cafe_frio: [
+                        { id: 20, name: 'Cold Brew', price: 4.00, description: 'Café infusionado en frío por 20 horas.', imageUrl: 'https://placehold.co/100x100/8c8c8c/ffffff?text=ColdB' },
+                        { id: 21, name: 'Iced Latte', price: 4.80, description: 'Latte con hielo.', imageUrl: 'https://placehold.co/100x100/8c8c8c/ffffff?text=ILatte' },
+                        { id: 22, name: 'Affogato', price: 6.00, description: 'Doble espresso vertido sobre helado de vainilla artesanal.', imageUrl: 'https://placehold.co/100x100/f5f5e6/3a3a3a?text=Affo' },
+                        { id: 23, name: 'Frapuchino Caramelo', price: 5.80, description: 'Bebida de café helada, mezclada con hielo y sirope de caramelo.', imageUrl: 'https://placehold.co/100x100/e8c985/3a3a3a?text=Frap' },
+                    ],
+                    te_e_infusiones: [
+                        { id: 30, name: 'Té Verde Matcha', price: 3.50, description: 'Matcha de alta calidad con agua caliente.', imageUrl: 'https://placehold.co/100x100/a0d6a0/3a3a3a?text=Matcha' },
+                        { id: 31, name: 'Té Negro Clásico', price: 2.80, description: 'Té negro English Breakfast.', imageUrl: 'https://placehold.co/100x100/3a3a3a/a0d6a0?text=Tea' },
+                        { id: 32, name: 'Té Frío Matcha Maracuyá', price: 4.50, description: 'Té verde matcha helado con notas tropicales de fruta de la pasión.', imageUrl: 'https://placehold.co/100x100/d6a0a0/a0d6a0?text=MatchaIce' },
+                    ]
+                },
+                bistro: [
+                    { id: 4, name: 'Sándwich de Pavo', price: 8.90, description: 'Pan artesano con pavo, queso suizo y aderezo especial.', imageUrl: 'https://placehold.co/100x100/f5f5e6/3a3a3a?text=Sandwich' },
+                    { id: 40, name: 'Tostada de Aguacate y Tomate', price: 7.50, description: 'Pan de masa madre, aguacate laminado y tomate cherry confitado.', imageUrl: 'https://placehold.co/100x100/a0d6a0/3a3a3a?text=Avocado' },
+                    { id: 41, name: 'Ensalada de Quinoa Mediterránea', price: 10.50, description: 'Quinoa, vegetales frescos, queso feta y vinagreta de limón.', imageUrl: 'https://placehold.co/100x100/f5f5e6/a0d6a0?text=Quinoa' },
+                    { id: 42, name: 'Sopa de Temporada', price: 6.00, description: 'Receta diaria, perfecta para el invierno.', imageUrl: 'https://placehold.co/100x100/d6a0a0/ffffff?text=Sopa' },
+                ]
+            },
+            // CAMBIO: Ofertas simuladas para la vista Home
+            dailyOffers: [
+                { id: 1, title: '¡Doble Puntos hoy!', description: 'Gana el doble de puntos con cualquier bebida caliente.', cta: 'Ver Menú', action: "changeView('order')" },
+                { id: 2, title: 'Oferta de Tarde', description: '2 Croissants por el precio de 1 después de las 4 PM.', cta: '¡Añadir!', action: "addToCart(2); changeView('cart')" },
+            ],
+            // Simulación de la tarjeta de fidelidad (Código QR/barra)
+            fidelityCode: '1234567890'
+        };
+
+        // --- Configuración de Tailwind para la estética Cécile ---
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'cecile-cream': '#f5f5e6', // Fondo suave
+                        'cecile-pink': '#d6a0a0',  // Acento elegante
+                        'cecile-dark': '#3a3a3a',  // Texto principal
+                        'cecile-gold': '#e8c985',  // Highlights
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        // Usamos Georgia como un sustituto elegante para un toque bistro/Starbucks
+                        display: ['Georgia', 'serif'],
+                    }
+                }
+            }
+        }
+
+        // --- Funciones de Utilidad y Renderizado ---
+
+        /**
+         * Renderiza la vista actual (Home, Order, Cart, Account)
+         */
+        const renderView = () => {
+            document.getElementById('app-container').innerHTML = '';
+            let content = '';
+            
+            // Usamos la propiedad `view` del estado global
+            switch (window.appState.view) {
+                case 'home':
+                    content = renderHome(); // NUEVA PANTALLA PRINCIPAL
+                    break;
+                case 'order':
+                    content = renderMenu(); // Menú es ahora 'order'
+                    break;
+                case 'cart':
+                    content = renderCart();
+                    break;
+                case 'account':
+                    // Decide si renderizar el menú principal o una sub-vista
+                    if (window.appState.subView) {
+                        content = renderSubView(window.appState.subView);
+                    } else {
+                        content = renderAccount();
+                    }
+                    break;
+            }
+
+            document.getElementById('app-container').innerHTML = content;
+            updateCartCount();
+        };
+
+        /**
+         * Cambia la vista de la aplicación y re-renderiza.
+         * @param {string} newView - La nueva vista ('home', 'order', 'cart', 'account').
+         * @param {string | null} newSubView - La sub-vista si la vista principal es 'account'.
+         */
+        window.changeView = (newView, newSubView = null) => {
+            window.appState.view = newView;
+            window.appState.subView = newSubView;
+
+            // Lógica de resaltado de la barra de navegación inferior
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('text-cecile-pink', 'border-cecile-pink');
+                el.classList.add('text-gray-500', 'border-transparent');
+            });
+
+            const navItem = document.getElementById(`nav-${newView}`);
+            if (navItem) {
+                navItem.classList.add('text-cecile-pink', 'border-cecile-pink');
+                navItem.classList.remove('text-gray-500', 'border-transparent');
+            }
+            
+            renderView();
+        };
+        
+        // --- NUEVA PANTALLA PRINCIPAL (HOME) ---
+        const renderHome = () => {
+            const { name, points, rewardTier } = window.appState.userProfile;
+            const { dailyOffers } = window.appState;
+            
+            const offersHtml = dailyOffers.map(offer => `
+                <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100 mb-4">
+                    <h4 class="text-lg font-bold text-cecile-pink">${offer.title}</h4>
+                    <p class="text-sm text-gray-600 my-2">${offer.description}</p>
+                    <button onclick="${offer.action}" class="px-4 py-2 bg-cecile-gold text-cecile-dark font-semibold rounded-lg text-sm hover:bg-yellow-400 transition">
+                        ${offer.cta}
+                    </button>
+                </div>
+            `).join('');
+
+            return `
+                <div class="p-4 md:p-6 text-cecile-dark">
+                    <!-- Saludo y Notificaciones -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-display font-bold">Hola, ${name}</h2>
+                        <button onclick="showToast('Buzón de entrada vacío.')" class="text-cecile-dark hover:text-cecile-pink transition">
+                            <!-- Icono de Buzón (Inbox) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        </button>
+                    </div>
+
+                    <!-- Tarjeta de Fidelidad (Balance de Puntos) -->
+                    <div class="bg-cecile-dark text-white p-6 rounded-2xl shadow-xl mb-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-gray-400">Puntos Cécile</p>
+                                <p class="text-5xl font-extrabold">${points} Puntos</p>
+                            </div>
+                            <span class="text-md font-bold text-cecile-dark ${rewardTier === 'Gold' ? 'bg-cecile-gold' : 'bg-gray-300'} px-3 py-1 rounded-full">${rewardTier}</span>
+                        </div>
+                        
+                        <!-- Simulación de tarjeta con logo Cécile (Placeholder) -->
+                        <div class="mt-6 h-36 bg-cecile-pink rounded-xl flex items-center justify-center relative overflow-hidden shadow-inner">
+                            <span class="text-4xl font-display font-extrabold text-white opacity-80 z-10">Cécile</span>
+                            <!-- Patrón sutil de fondo -->
+                            <div class="absolute inset-0 bg-repeat opacity-20" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><circle cx="4" cy="4" r="1" fill="%23ffffff"/></svg>');"></div>
+                        </div>
+
+                        <!-- Botones de Acción de Tarjeta -->
+                        <div class="flex justify-between space-x-3 mt-6">
+                            <button onclick="showFidelityCodeModal()" class="flex-1 py-3 bg-cecile-gold text-cecile-dark font-bold rounded-xl text-lg hover:bg-yellow-400 transition">
+                                <!-- Icono de Scan (Código de barras) -->
+                                <span class="flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.73 10a9 9 0 0 0-14.73 0"></path><path d="M16 14a5 5 0 0 0-8 0"></path><path d="M13 18a1 1 0 0 0-2 0"></path></svg>
+                                    <span class="ml-2">Escanear mi Código</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Ofertas del Día -->
+                    <h3 class="text-2xl font-display font-semibold text-cecile-dark mt-8 mb-4">Ofertas del Día</h3>
+                    ${dailyOffers.length > 0 ? offersHtml : '<p class="text-gray-500">No hay ofertas especiales hoy.</p>'}
+
+                </div>
+            `;
+        };
+
+        /**
+         * Muestra un modal con el código de fidelidad (simulado).
+         */
+        window.showFidelityCodeModal = () => {
+            const modal = document.getElementById('code-modal');
+            const code = window.appState.fidelityCode;
+            
+            // Generar un SVG de código de barras simple
+            const barcodeSvg = `
+                <svg width="250" height="100" viewBox="0 0 250 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0" y="0" width="10" height="100" fill="#3a3a3a"/>
+                    <rect x="15" y="0" width="5" height="100" fill="#3a3a3a"/>
+                    <rect x="25" y="0" width="15" height="100" fill="#3a3a3a"/>
+                    <rect x="45" y="0" width="5" height="100" fill="#3a3a3a"/>
+                    <rect x="55" y="0" width="20" height="100" fill="#3a3a3a"/>
+                    <rect x="80" y="0" width="5" height="100" fill="#3a3a3a"/>
+                    <rect x="90" y="0" width="10" height="100" fill="#3a3a3a"/>
+                    <rect x="105" y="0" width="15" height="100" fill="#3a3a3a"/>
+                    <rect x="125" y="0" width="5" height="100" fill="#3a3a3a"/>
+                    <rect x="135" y="0" width="10" height="100" fill="#3a3a3a"/>
+                    <rect x="150" y="0" width="20" height="100" fill="#3a3a3a"/>
+                    <rect x="175" y="0" width="5" height="100" fill="#3a3a3a"/>
+                    <rect x="185" y="0" width="15" height="100" fill="#3a3a3a"/>
+                    <rect x="205" y="0" width="5" height="100" fill="#3a3a3a"/>
+                    <rect x="215" y="0" width="10" height="100" fill="#3a3a3a"/>
+                    <rect x="230" y="0" width="20" height="100" fill="#3a3a3a"/>
+                </svg>
+            `;
+
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50" onclick="document.getElementById('code-modal').classList.add('hidden')">
+                    <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center" onclick="event.stopPropagation()">
+                        <h3 class="text-2xl font-display font-bold text-cecile-dark mb-4">Código de Fidelidad</h3>
+                        <p class="text-gray-600 mb-6">Muestra esto al pagar para ganar y canjear tus puntos.</p>
+                        
+                        <div class="w-full bg-cecile-cream p-4 rounded-lg flex justify-center mb-4">
+                            ${barcodeSvg}
+                        </div>
+                        <p class="font-mono text-lg tracking-widest text-cecile-dark">${code}</p>
+
+                        <button onclick="document.getElementById('code-modal').classList.add('hidden')" class="mt-6 py-2 px-6 bg-cecile-pink text-white font-bold rounded-lg hover:bg-cecile-dark transition">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        };
+
+        // --- Renderizado de Sub-Vistas de Cuenta ---
+
+        /**
+         * Renderiza una sub-vista específica dentro del menú de Cuenta.
+         * @param {string} subViewName - Nombre de la sub-vista.
+         */
+        const renderSubView = (subViewName) => {
+            switch (subViewName) {
+                case 'personalInfo':
+                    return renderPersonalInfo();
+                case 'transactionHistory':
+                    return renderTransactionHistory();
+                default:
+                    return renderAccount();
+            }
+        };
+
+        /**
+         * Renderiza la vista de Información Personal.
+         */
+        const renderPersonalInfo = () => {
+            const { name, email, phone, birthdate } = window.appState.userProfile;
+            return `
+                <div class="p-4 md:p-6 text-cecile-dark">
+                    <button onclick="changeView('account', null)" class="text-cecile-dark mb-4 flex items-center hover:text-cecile-pink transition">
+                        <!-- Icono de flecha izquierda -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span class="ml-2 font-semibold">Cuenta</span>
+                    </button>
+                    
+                    <h2 class="text-3xl font-display text-cecile-dark mb-6">Información Personal</h2>
+
+                    <form onsubmit="event.preventDefault(); savePersonalInfo();" class="space-y-4">
+                        <div class="space-y-2">
+                            <label for="profileName" class="text-sm font-medium text-gray-700">Nombre Completo</label>
+                            <input type="text" id="profileName" value="${name}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cecile-pink focus:border-cecile-pink transition" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label for="profileEmail" class="text-sm font-medium text-gray-700">Email (No Editable)</label>
+                            <input type="email" id="profileEmail" value="${email}" class="w-full p-3 border border-gray-200 bg-gray-100 rounded-lg cursor-not-allowed" disabled>
+                        </div>
+                        <div class="space-y-2">
+                            <label for="profilePhone" class="text-sm font-medium text-gray-700">Teléfono</label>
+                            <input type="tel" id="profilePhone" value="${phone}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cecile-pink focus:border-cecile-pink transition">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="profileBirthdate" class="text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
+                            <input type="date" id="profileBirthdate" value="${birthdate}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cecile-pink focus:border-cecile-pink transition">
+                        </div>
+
+                        <button type="submit" class="w-full py-3 mt-6 bg-cecile-pink text-white font-bold rounded-xl text-lg hover:bg-cecile-dark transition duration-200 shadow-md">
+                            Guardar Cambios
+                        </button>
+                    </form>
+                </div>
+            `;
+        };
+
+        /**
+         * Renderiza la vista del Historial de Transacciones.
+         */
+        const renderTransactionHistory = () => {
+            const { transactions } = window.appState;
+            
+            // Ordenar transacciones por fecha descendente
+            const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const transactionsHtml = sortedTransactions.map(tx => `
+                <div class="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3 hover:shadow-md transition">
+                    <div>
+                        <p class="font-semibold text-cecile-dark">Pedido #${tx.id}</p>
+                        <p class="text-xs text-gray-500">${tx.date} en ${tx.location}</p>
+                        <p class="text-xs text-gray-400 mt-1">${tx.items} artículo${tx.items !== 1 ? 's' : ''}</p>
+                    </div>
+                    <p class="font-bold text-lg text-cecile-dark">€${tx.amount.toFixed(2)}</p>
+                </div>
+            `).join('');
+
+            return `
+                <div class="p-4 md:p-6 text-cecile-dark">
+                    <button onclick="changeView('account', null)" class="text-cecile-dark mb-4 flex items-center hover:text-cecile-pink transition">
+                        <!-- Icono de flecha izquierda -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span class="ml-2 font-semibold">Cuenta</span>
+                    </button>
+                    
+                    <h2 class="text-3xl font-display text-cecile-dark mb-6">Historial de Transacciones</h2>
+
+                    ${transactions.length === 0 ? 
+                        '<p class="text-center text-gray-500 mt-12">No hay transacciones registradas.</p>' :
+                        `<div id="transactions-list">${transactionsHtml}</div>`
+                    }
+                </div>
+            `;
+        };
+
+        /**
+         * Renderiza el menú principal de la Cuenta (dashboard).
+         */
+        const renderAccount = () => {
+            const { name, email, rewardTier } = window.appState.userProfile;
+
+            // Función de ayuda para los ítems del menú
+            const renderMenuItem = (title, subtitle, iconHtml, onclick) => `
+                <button onclick="${onclick}" class="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3 text-left w-full hover:shadow-md transition">
+                    <div class="flex items-center">
+                        <span class="text-cecile-pink mr-4">${iconHtml}</span>
+                        <div>
+                            <p class="font-semibold text-cecile-dark">${title}</p>
+                            <p class="text-xs text-gray-500">${subtitle}</p>
+                        </div>
+                    </div>
+                    <!-- Icono de flecha derecha -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            `;
+
+            return `
+                <div class="p-4 md:p-6 text-cecile-dark">
+                    <h2 class="text-4xl font-display font-bold mb-2">Cuenta</h2>
+                    <p class="text-lg font-semibold">${name}</p>
+                    <p class="text-sm text-gray-500 mb-6">${email}</p>
+
+                    <!-- Sección Perfil -->
+                    <h3 class="text-xl font-semibold text-cecile-pink mt-8 mb-4">Perfil</h3>
+                    
+                    ${renderMenuItem(
+                        'Información Personal',
+                        'Nombre, teléfono y fecha de nacimiento.',
+                        '<!-- Icono de usuario --><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
+                        "changeView('account', 'personalInfo')"
+                    )}
+
+                    ${renderMenuItem(
+                        'Historial de Transacciones',
+                        'Consulta tus pedidos y gastos anteriores.',
+                        '<!-- Icono de historial --><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6l-3-3"></path><path d="M12 22v-6l-3 3"></path><path d="M22 12h-6l3-3"></path><path d="M2 12h6l-3-3"></path><path d="M12 22v-6l-3 3"></path><path d="M22 12h-6l3-3"></path><path d="M22 12h-6l3-3"></path><path d="M22 12h-6l3-3"></path><path d="M12 2v6l3-3"></path><path d="M12 22v-6l3 3"></path><path d="M22 12h-6l-3-3"></path><path d="M2 12h6l-3 3"></path></svg>',
+                        "changeView('account', 'transactionHistory')"
+                    )}
+
+                    ${renderMenuItem(
+                        'Métodos de Pago',
+                        'Tarjetas de Cécile y otras formas de pago.',
+                        '<!-- Icono de tarjeta --><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>',
+                        "showToast('Función de pagos no implementada aún.')"
+                    )}
+
+                    <!-- Sección Seguridad -->
+                    <h3 class="text-xl font-semibold text-cecile-pink mt-8 mb-4">Seguridad</h3>
+                    
+                    ${renderMenuItem(
+                        'Verificación de Dos Factores',
+                        'Estado: Desactivado (Recomendado)',
+                        '<!-- Icono de candado --><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>',
+                        "showToast('La seguridad de dos factores se activa en el servidor.')"
+                    )}
+
+                </div>
+            `;
+        };
+        
+        /**
+         * Simula guardar la información personal.
+         */
+        window.savePersonalInfo = async () => {
+            const nameInput = document.getElementById('profileName').value;
+            const phoneInput = document.getElementById('profilePhone').value;
+            const birthdateInput = document.getElementById('profileBirthdate').value;
+
+            if (!nameInput) {
+                showToast("El nombre es obligatorio.", 'error');
+                return;
+            }
+
+            const updatedProfile = {
+                ...window.appState.userProfile,
+                name: nameInput,
+                phone: phoneInput,
+                birthdate: birthdateInput
+            };
+
+            const userDocRef = doc(db, 
+                `artifacts/${appId}/users/${userId}/cecile_app`, 
+                'profile'
+            );
+
+            try {
+                // Actualiza el documento del usuario con los nuevos datos
+                await setDoc(userDocRef, updatedProfile, { merge: true });
+                
+                // Actualiza el estado local
+                window.appState.userProfile = updatedProfile; 
+
+                showToast(`¡Información personal actualizada con éxito!`);
+                changeView('account', null); // Vuelve al menú principal de la cuenta
+            } catch (e) {
+                console.error("Error al actualizar la información personal en Firestore: ", e);
+                showToast("Error al guardar la información. Inténtalo de nuevo.", 'error');
+            }
+        };
+
+
+        /**
+         * Renderiza la vista de pedidos/menú (ahora llamada 'order').
+         */
+        const renderMenu = () => {
+            let itemsHtml = '';
+            
+            for (const categoryKey in window.appState.menuCategories) {
+                const categoryData = window.appState.menuCategories[categoryKey];
+                const categoryName = categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1).replace(/_/g, ' ');
+
+                itemsHtml += `
+                    <h3 class="text-3xl font-display font-bold text-cecile-dark mt-6 mb-4 
+                        ${categoryKey !== Object.keys(window.appState.menuCategories)[0] ? 'pt-4 border-t border-cecile-pink/20' : ''}">
+                        ${categoryName}
+                    </h3>
+                `;
+
+                // Verificar si la categoría tiene subcategorías (ej. Bebidas)
+                if (typeof categoryData === 'object' && !Array.isArray(categoryData)) {
+                    // Si hay subcategorías (ej. cafe_caliente, cafe_frio)
+                    for (const subCategoryKey in categoryData) {
+                        const subCategoryItems = categoryData[subCategoryKey];
+                        const subCategoryName = subCategoryKey.charAt(0).toUpperCase() + subCategoryKey.slice(1).replace(/_/g, ' ');
+
+                        itemsHtml += `
+                            <h4 class="text-xl font-semibold text-cecile-pink mt-4 mb-3">${subCategoryName}</h4>
+                            <div class="grid gap-4">
+                        `;
+
+                        subCategoryItems.forEach(item => {
+                            itemsHtml += renderMenuItemCard(item);
+                        });
+
+                        itemsHtml += '</div>';
+                    }
+                } else if (Array.isArray(categoryData)) {
+                    // Si son ítems directos de la categoría (ej. Pastelería, Bistro)
+                    itemsHtml += `<div class="grid gap-4">`;
+                    categoryData.forEach(item => {
+                        itemsHtml += renderMenuItemCard(item);
+                    });
+                    itemsHtml += '</div>';
+                }
+            }
+
+            return `
+                <div class="p-4 md:p-6">
+                    <h2 class="text-3xl font-display text-cecile-dark mb-6">Realiza tu Pedido</h2>
+                    <div id="menu-list">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        /**
+         * Función de ayuda para renderizar la tarjeta de un artículo del menú.
+         */
+        const renderMenuItemCard = (item) => {
+            return `
+                <div class="flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                    <img src="${item.imageUrl}" alt="${item.name}" class="w-14 h-14 object-cover rounded-lg mr-4 flex-shrink-0">
+                    <div class="flex-grow">
+                        <h4 class="font-semibold text-cecile-dark">${item.name}</h4>
+                        <p class="text-xs text-gray-500 truncate">${item.description}</p>
+                        <p class="text-cecile-pink font-bold mt-1 text-sm">€${item.price.toFixed(2)}</p>
+                    </div>
+                    <button onclick="addToCart(${item.id})"
+                        class="bg-cecile-gold text-cecile-dark p-2 rounded-full text-sm flex-shrink-0 transition duration-200 hover:bg-cecile-pink hover:text-white transform hover:scale-110">
+                        <!-- Icono de "+" -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+            `;
+        };
+
+        /**
+         * Renderiza la vista de recompensas con niveles (Tiers).
+         */
+        const renderRewards = () => {
+            // Se mantiene el código de renderRewards ya que es relevante al sistema de puntos.
+            const { name, points, rewardTier, totalPointsRequired, purchaseCount, nextRewardAt } = window.appState.userProfile;
+            const remainingPurchases = nextRewardAt - (purchaseCount % nextRewardAt);
+            const progressPercentage = (purchaseCount % nextRewardAt) / nextRewardAt * 100;
+            const purchaseText = remainingPurchases === 1 ? 'compra' : 'compras';
+            
+            const tierInfo = {
+                'Bronze': { color: 'text-amber-700', bg: 'bg-amber-700', nextTier: 'Silver', pointsNeeded: 200, benefit: 'Artículos de pastelería gratis.' },
+                'Silver': { color: 'text-slate-500', bg: 'bg-slate-500', nextTier: 'Gold', pointsNeeded: 500, benefit: 'Acceso anticipado a productos y pastelería gratis.' },
+                'Gold': { color: 'text-cecile-gold', bg: 'bg-cecile-gold', nextTier: '¡Máximo!', pointsNeeded: 0, benefit: 'Regalo de cumpleaños doble y todos los beneficios.' },
+            };
+
+            const currentInfo = tierInfo[rewardTier];
+            const nextTierGoal = currentInfo.pointsNeeded;
+            const tierProgress = rewardTier === 'Gold' ? 100 : (points / nextTierGoal) * 100;
+            const pointsToNext = nextTierGoal - points;
+            
+            return `
+                <div class="p-4 md:p-6 text-cecile-dark">
+                    <h2 class="text-3xl font-display mb-2">Hola, ${name}!</h2>
+                    <p class="text-sm text-gray-500 mb-6">ID de Cliente: <span class="font-mono text-xs bg-gray-100 p-1 rounded">${userId}</span></p>
+
+                    <!-- Tarjeta de Nivel (Tier) - Más parecido a Starbucks -->
+                    <div class="bg-cecile-dark text-white p-6 rounded-2xl shadow-xl mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold mb-1">Tu Nivel Cécile:</h3>
+                            <span class="text-lg font-bold ${currentInfo.bg} px-3 py-1 rounded-full text-cecile-dark">${rewardTier}</span>
+                        </div>
+                        <p class="text-5xl font-extrabold mt-2">${points} Puntos</p>
+                        
+                        <!-- Progreso al Siguiente Nivel -->
+                        ${rewardTier !== 'Gold' ? `
+                            <p class="mt-4 text-sm font-light">
+                                Te faltan <span class="font-bold">${pointsToNext > 0 ? pointsToNext : 0} puntos</span> para el Nivel ${currentInfo.nextTier}.
+                            </p>
+                            <div class="w-full bg-gray-600 rounded-full h-2 mt-2">
+                                <div class="bg-cecile-gold h-2 rounded-full transition-all duration-500" style="width: ${tierProgress > 100 ? 100 : tierProgress}%;"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Beneficio: ${currentInfo.benefit}</p>
+                        ` : '<p class="mt-4 text-sm font-light">¡Disfrutas de los máximos beneficios Cécile!</p>'}
+                    </div>
+
+                    <!-- Progreso de Recompensa por Compra -->
+                    <div class="bg-cecile-cream p-6 rounded-xl shadow-inner border border-cecile-pink/30">
+                        <h3 class="text-xl font-semibold mb-4 text-cecile-pink">Recompensa por Frecuencia</h3>
+                        <p class="text-lg font-bold text-cecile-dark">¡Pastelería Gratis!</p>
+                        <p class="text-sm text-gray-600 mb-4">Solo ${remainingPurchases} ${purchaseText} más para tu regalo de fidelidad.</p>
+                        
+                        <!-- Barra de Progreso -->
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div class="bg-cecile-pink h-3 rounded-full transition-all duration-500" style="width: ${progressPercentage}%;"></div>
+                            </div>
+                        
+                        <p class="text-xs text-gray-500 mt-1">Llevas ${purchaseCount} compras totales registradas.</p>
+                    </div>
+
+                    <p class="mt-8 text-center text-sm text-gray-400">¡Gracias por tu fidelidad!</p>
+                </div>
+            `;
+        };
+
+        /**
+         * Renderiza la vista del carrito.
+         */
+        const renderCart = () => {
+            // Se mantiene el código de renderCart
+            const { cart } = window.appState;
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemsHtml = cart.map((item, index) => `
+                <div class="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border-b border-gray-100 mb-2">
+                    <div class="flex-grow">
+                        <p class="font-semibold text-cecile-dark">${item.name} (x${item.quantity})</p>
+                        <p class="text-sm text-gray-500">€${item.price.toFixed(2)} c/u</p>
+                    </div>
+                    <p class="font-bold text-lg text-cecile-pink">€${(item.price * item.quantity).toFixed(2)}</p>
+                    <button onclick="removeFromCart(${index})" class="ml-4 text-red-400 hover:text-red-600 text-xl leading-none">
+                        &times;
+                    </button>
+                </div>
+            `).join('');
+
+            return `
+                <div class="p-4 md:p-6">
+                    <h2 class="text-3xl font-display text-cecile-dark mb-6 border-b pb-2 border-cecile-pink/30">Tu Pedido</h2>
+                    
+                    ${cart.length === 0 ? 
+                        '<p class="text-center text-gray-500 mt-12">El carrito está vacío. ¡Empieza a pedir!</p>' :
+                        `<div id="cart-list" class="mb-6">${itemsHtml}</div>
+                         
+                         <div class="flex justify-between font-bold text-2xl text-cecile-dark border-t pt-4 mt-4">
+                            <span>Total</span>
+                            <span id="cart-total">€${subtotal.toFixed(2)}</span>
+                         </div>
+                         
+                         <button onclick="checkout()" ${isAuthReady ? '' : 'disabled'}
+                             class="w-full mt-8 py-3 bg-cecile-pink text-white font-bold rounded-xl text-lg transition duration-200 
+                                 ${isAuthReady ? 'hover:bg-cecile-dark shadow-lg' : 'opacity-50 cursor-not-allowed'}"
+                             id="checkout-button">
+                             ${isAuthReady ? 'Pagar y Pedir para Recoger' : 'Cargando Autenticación...'}
+                         </button>`
+                    }
+                </div>
+            `;
+        };
+
+        /**
+         * Actualiza el contador de artículos en el icono del carrito.
+         */
+        const updateCartCount = () => {
+            const count = window.appState.cart.reduce((total, item) => total + item.quantity, 0);
+            const cartIcon = document.getElementById('cart-count');
+            if (cartIcon) {
+                cartIcon.textContent = count;
+                cartIcon.classList.toggle('hidden', count === 0);
+            }
+        };
+
+        /**
+         * Agrega un artículo al carrito.
+         */
+        window.addToCart = (itemId) => {
+            // Aplanar el menú para buscar el ítem rápidamente
+            let flatMenu = [];
+            for (const key in window.appState.menuCategories) {
+                const category = window.appState.menuCategories[key];
+                if (Array.isArray(category)) {
+                    // Si es una lista simple (Pastelería, Bistro)
+                    flatMenu = flatMenu.concat(category);
+                } else {
+                    // Si tiene subcategorías (Bebidas)
+                    for (const subKey in category) {
+                        flatMenu = flatMenu.concat(category[subKey]);
+                    }
+                }
+            }
+            
+            const item = flatMenu.find(i => i.id === itemId);
+            if (!item) return;
+
+            const existingItem = window.appState.cart.find(i => i.id === itemId);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                // Solo guardamos los datos esenciales en el carrito
+                window.appState.cart.push({ 
+                    id: item.id, 
+                    name: item.name, 
+                    price: item.price, 
+                    quantity: 1 
+                });
+            }
+            
+            // Si estamos en la vista del carrito, re-renderizamos.
+            if (window.appState.view === 'cart') renderView();
+            updateCartCount();
+        };
+
+        /**
+         * Remueve un artículo del carrito.
+         */
+        window.removeFromCart = (index) => {
+            // Se mantiene el código de removeFromCart
+            window.appState.cart.splice(index, 1);
+            renderView(); // Re-renderiza para reflejar el cambio.
+        };
+
+        /**
+         * Simula el proceso de pago, calcula puntos, verifica nivel y actualiza el estado en Firestore.
+         */
+        window.checkout = async () => {
+            // Se mantiene el código de checkout
+            if (window.appState.cart.length === 0) return;
+            if (!isAuthReady || !userId) {
+                console.error("Autenticación no lista o userId no disponible.");
+                return;
+            }
+
+            const subtotal = window.appState.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            // Gana 1 punto por cada euro gastado (redondeado hacia abajo)
+            const pointsEarned = Math.floor(subtotal); 
+            const newPurchaseCount = window.appState.userProfile.purchaseCount + 1;
+            const newTotalPoints = window.appState.userProfile.points + pointsEarned;
+            
+            // Lógica de Tier: Bronze (0-199), Silver (200-499), Gold (500+)
+            let newTier = 'Bronze';
+            let pointsRequired = 200; // Por defecto, es el objetivo de Silver
+
+            if (newTotalPoints >= 500) {
+                newTier = 'Gold';
+                pointsRequired = newTotalPoints; // Máximo alcanzado
+            } else if (newTotalPoints >= 200) {
+                newTier = 'Silver';
+                pointsRequired = 500; // Objetivo de Gold
+            } 
+            
+            const newProfile = {
+                ...window.appState.userProfile,
+                points: newTotalPoints,
+                purchaseCount: newPurchaseCount,
+                rewardTier: newTier,
+                totalPointsRequired: pointsRequired,
+                lastOrderDate: new Date().toISOString()
+            };
+
+            const userDocRef = doc(db, 
+                `artifacts/${appId}/users/${userId}/cecile_app`, 
+                'profile'
+            );
+
+            try {
+                // Actualiza el documento del usuario con el nuevo perfil
+                await setDoc(userDocRef, newProfile, { merge: true });
+                
+                // Limpia el carrito y notifica al usuario (simulando confirmación de pedido)
+                const orderedItems = window.appState.cart.length;
+
+                // Añade la nueva transacción simulada
+                window.appState.transactions.unshift({
+                    id: Math.floor(Math.random() * 1000) + 1000,
+                    date: new Date().toISOString().substring(0, 10),
+                    amount: subtotal,
+                    items: orderedItems,
+                    location: 'Pedido a Domicilio/Recogida'
+                });
+                
+                window.appState.cart = [];
+                window.appState.userProfile = newProfile; // Actualiza el estado local inmediatamente
+                
+
+                showToast(`¡Pedido confirmado! Ganaste ${pointsEarned} puntos. Listo para recoger en 10 minutos.`);
+                window.changeView('home'); // Vuelve a la pantalla principal
+            } catch (e) {
+                console.error("Error al procesar el pago en Firestore: ", e);
+                showToast("Error al procesar el pago. Inténtalo de nuevo.", 'error');
+            }
+        };
+
+        /**
+         * Muestra un mensaje temporal (Toast).
+         */
+        const showToast = (message, type = 'success') => {
+            // Se mantiene el código de showToast
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 p-3 rounded-xl shadow-lg z-50 transition-opacity duration-300';
+            
+            if (type === 'success') {
+                toast.classList.add('bg-cecile-pink', 'text-white');
+            } else {
+                toast.classList.add('bg-red-500', 'text-white');
+            }
+
+            toast.classList.remove('opacity-0', 'hidden');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 5000); // 5 segundos para el toast
+        };
+
+        // --- Inicialización de Firebase y Autenticación ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicialización de la aplicación
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Perfil por defecto completo para evitar errores de campos faltantes
+            const defaultProfile = {
+                name: 'Cliente Cécile',
+                email: 'cliente.cecile@email.com',
+                phone: '+34 600 123 456',
+                birthdate: '1985-10-25',
+                points: 31,
+                purchaseCount: 0,
+                nextRewardAt: 5,
+                rewardTier: 'Bronze',
+                totalPointsRequired: 200,
+                lastOrderDate: new Date(0).toISOString(),
+            };
+
+            // Listener de estado de autenticación
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    isAuthReady = true;
+                    // Intenta cargar el perfil del usuario, si existe.
+                    loadUserProfile(userId, defaultProfile);
+                } else {
+                    // Si no hay usuario, inicia sesión anónimamente si el token no está disponible.
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Error signing in:", error);
+                        // Fallback: usar un UUID y profile por defecto
+                        userId = crypto.randomUUID();
+                        isAuthReady = true;
+                        window.appState.userProfile = defaultProfile;
+                        renderView();
+                    }
+                }
+            });
+        });
+
+        /**
+         * Carga el perfil del usuario de Firestore y establece el listener.
+         */
+        const loadUserProfile = (currentUserId, defaultProfile) => {
+            const userDocRef = doc(db, 
+                `artifacts/${appId}/users/${currentUserId}/cecile_app`, 
+                'profile'
+            );
+
+            // onSnapshot para actualizaciones en tiempo real
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    // Fusionar con el default para asegurar que existan los nuevos campos
+                    window.appState.userProfile = { 
+                        ...defaultProfile, 
+                        ...docSnap.data() 
+                    };
+                } else {
+                    // Si es la primera vez, creamos el perfil por defecto
+                    console.log("Creando nuevo perfil para el usuario.");
+                    window.appState.userProfile = defaultProfile;
+                    setDoc(userDocRef, defaultProfile);
+                }
+                // Renderizar la vista inicial después de cargar/crear el perfil
+                renderView();
+            }, (error) => {
+                console.error("Error al escuchar el perfil del usuario: ", error);
+                renderView();
+            });
+        };
+    </script>
+
+    <style>
+        /* Estilo base para simular una app móvil */
+        body {
+            background-color: #f5f5e6; /* cecile-cream */
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #mobile-frame {
+            max-width: 450px;
+            height: 100vh;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Estilo para el header */
+        header {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+
+        /* Ocultar scrollbar en contenedor principal */
+        #app-container {
+            overflow-y: auto;
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+            flex-grow: 1;
+        }
+
+        #app-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+        
+        /* Efecto de sombra para la barra de navegación */
+        nav {
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Estilo para el icono del carrito */
+        .cart-icon-container {
+            position: relative;
+        }
+
+        .cart-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 4px;
+            background-color: #e8c985; /* cecile-gold */
+            color: #3a3a3a; /* cecile-dark */
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Contenedor principal que simula la pantalla del móvil -->
+    <div id="mobile-frame">
+        
+        <!-- Encabezado de la App (Se deja simple, el saludo está en la vista Home) -->
+        <header class="sticky top-0 p-4">
+            <h1 class="text-2xl font-display font-bold text-cecile-dark text-center">Cécile Pastelería</h1>
+        </header>
+
+        <!-- Contenedor del contenido de la App (Home, Order, Cart, Account) -->
+        <main id="app-container" class="flex-grow">
+            <!-- El contenido se inyectará aquí con JavaScript -->
+            <div class="text-center p-8 text-gray-400">Cargando aplicación...</div>
+        </main>
+
+        <!-- Modal para mostrar el Código de Fidelidad -->
+        <div id="code-modal" class="hidden"></div>
+
+        <!-- Barra de Navegación Inferior (4 pestañas: Home, Order, Cart, Account) -->
+        <nav class="flex justify-around items-center h-16 bg-white sticky bottom-0 border-t border-gray-100">
+            
+            <!-- HOME (Principal, ahora con la tarjeta) -->
+            <button id="nav-home" onclick="changeView('home')" 
+                class="nav-item flex flex-col items-center justify-center p-2 text-cecile-pink border-b-2 border-cecile-pink transition-colors">
+                <!-- Icono de Casa (Home) -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span class="text-xs mt-1">Home</span>
+            </button>
+            
+            <!-- ORDER (Menú de pedidos) -->
+            <button id="nav-order" onclick="changeView('order')" 
+                class="nav-item flex flex-col items-center justify-center p-2 text-gray-500 border-b-2 border-transparent transition-colors">
+                <!-- Icono de Orden / Listado -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span class="text-xs mt-1">Ordenar</span>
+            </button>
+            
+            <!-- CART (Carrito de compras) -->
+            <button id="nav-cart" onclick="changeView('cart')" 
+                class="nav-item flex flex-col items-center justify-center p-2 text-gray-500 border-b-2 border-transparent transition-colors">
+                <div class="cart-icon-container">
+                    <!-- Icono de Carrito -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 12.06a2 2 0 0 0 2 1.94h9.64a2 2 0 0 0 2-1.66L23 5H6"></path></svg>
+                    <span id="cart-count" class="cart-badge hidden">0</span>
+                </div>
+                <span class="text-xs mt-1">Carrito</span>
+            </button>
+
+            <!-- ACCOUNT (Cuenta, en la esquina inferior derecha) -->
+            <button id="nav-account" onclick="changeView('account')" 
+                class="nav-item flex flex-col items-center justify-center p-2 text-gray-500 border-b-2 border-transparent transition-colors">
+                <!-- Icono de Cuenta -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="text-xs mt-1">Cuenta</span>
+            </button>
+
+        </nav>
+    </div>
+
+    <!-- Toast/Mensaje de notificación (sin usar alert()) -->
+    <div id="toast" class="opacity-0 hidden"></div>
+
+</body>
+</html>
